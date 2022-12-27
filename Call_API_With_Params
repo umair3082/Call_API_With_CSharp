@@ -1,0 +1,103 @@
+using Newtonsoft.Json;
+
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+
+namespace ConsoleApp_CallAnAPI
+{
+    class Program
+    {
+       
+
+        public class Annotations
+        {
+            public string source_name { get; set; }
+            public string source_description { get; set; }
+            public string dataset_name { get; set; }
+            public string dataset_link { get; set; }
+            public string table_id { get; set; }
+            public string topic { get; set; }
+            public string subtopic { get; set; }
+        }
+
+        public class Datum
+        {
+            [JsonProperty("ID Nation")]
+            public string IDNation { get; set; }
+            public string Nation { get; set; }
+
+            [JsonProperty("ID Year")]
+            public int IDYear { get; set; }
+            public string Year { get; set; }
+            public int Population { get; set; }
+
+            [JsonProperty("Slug Nation")]
+            public string SlugNation { get; set; }
+        }
+
+        public class Root_
+        {
+            public List<Datum> data { get; set; }
+            public List<Source> source { get; set; }
+        }
+
+        public class Source
+        {
+            public List<string> measures { get; set; }
+            public Annotations annotations { get; set; }
+            public string name { get; set; }
+            public List<object> substitutions { get; set; }
+        }
+
+        static void Main(string[] args)
+        {
+            //https://apipheny.io/free-api/
+            
+            try
+            {
+                string URL = "https://datausa.io/api/";
+                string urlParameters = "data?drilldowns=Nation&measures=Population";
+                HttpClient client = new HttpClient();
+                ServicePointManager.Expect100Continue = true;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                client.BaseAddress = new Uri(URL);
+
+                // Add an Accept header for JSON format.
+                client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+
+                // List data response.
+                HttpResponseMessage response = client.GetAsync(urlParameters).Result;  // Blocking call! Program will wait here until a response is received or a timeout occurs.
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parse the response body.
+                    var dataObjects = response.Content.ReadAsStringAsync().Result;  //Make sure to add a reference to System.Net.Http.Formatting.dll
+                    var ParsedJSONData = JsonConvert.DeserializeObject<Root_>(dataObjects);
+
+                    foreach (var d in ParsedJSONData.data)
+                    {
+                        Console.WriteLine("ID Nation: {0}, Nation: {1}, ID Year: {2} ", d.IDNation, d.Nation, d.IDYear);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("{0} ({1})", (int)response.StatusCode, response.ReasonPhrase);
+                }
+
+                // Make any other calls using HttpClient here.
+
+                // Dispose once all HttpClient calls are complete. This is not necessary if the containing object will be disposed of; for example in this case the HttpClient instance will be disposed automatically when the application terminates so the following call is superfluous.
+                client.Dispose();
+                Console.ReadLine();
+            }
+            catch (Exception)
+            {
+
+                //throw;
+            }
+        }
+    }
+}
